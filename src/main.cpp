@@ -82,8 +82,9 @@ void touch_test_screen_event_cb(lv_event_t *e) {
   }
 }
 
-void __attribute__((weak)) clear_touch_calibration(void) {
-  lv_label_set_text(label, "Function not implemented.");
+void clear_touch_calibration(void) {
+  prefs.remove("touch_calib");
+  ESP.restart();
 }
 
 void button_event_cb(lv_event_t *e) {

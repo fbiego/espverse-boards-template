@@ -44,6 +44,8 @@
 #define DISPLAY_TYPE "LCD"
 #define BOARD_HAS_TOUCH 1
 
+#define ESP32_CYD 1
+
 /*********************
  *      INCLUDES
  *********************/
