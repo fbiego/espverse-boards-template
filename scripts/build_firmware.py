@@ -1,176 +1,215 @@
-#    MIT License
+# Generic PlatformIO ESP32 firmware merger.
 #
-#   Copyright (c) 2025 Felix Biego
+# Add this file to a PlatformIO project and register it in platformio.ini:
 #
-#   Permission is hereby granted, free of charge, to any person obtaining a copy
-#   of this software and associated documentation files (the "Software"), to deal
-#   in the Software without restriction, including without limitation the rights
-#   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#   copies of the Software, and to permit persons to whom the Software is
-#   furnished to do so, subject to the following conditions:
+#   extra_scripts =
+#       post:scripts/build_firmware.py
 #
-#   The above copyright notice and this permission notice shall be included in all
-#   copies or substantial portions of the Software.
+# It creates a single flashable .bin in the firmware/ directory by merging the
+# bootloader, partition table, app, and other binary segments from PlatformIO's
+# real upload command.
 #
-#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#   SOFTWARE.
-#
-#   ______________  _____
-#   ___  __/___  /_ ___(_)_____ _______ _______
-#   __  /_  __  __ \__  / _  _ \__  __ `/_  __ \ 
-#   _  __/  _  /_/ /_  /  /  __/_  /_/ / / /_/ /
-#   /_/     /_.___/ /_/   \___/ _\__, /  \____/
-# 							  /____/
-#
+# Optional:
+#   - Define FIRMWARE_VERSION in a source/header file to include it in filenames.
+#   - Set custom_firmware_version in platformio.ini to override version detection.
+#   - Set custom_firmware_output_dir in platformio.ini to change output directory.
+#   - Set custom_firmware_manifest = no to disable firmware.json generation.
 
-import re
-import os, shutil
-from datetime import datetime
-from pathlib import Path
 import json
+import os
+import re
+from pathlib import Path
 
 Import("env")
 
-sep = os.sep
 
-FILE_PATH = Path(f"include{sep}main.h")
-FIRMWARE_JSON_PATH = Path(f"firmware{sep}firmware.json")
-
-print("Extra Script")
+PROJECT_DIR = Path(env.subst("$PROJECT_DIR"))
+DEFAULT_OUTPUT_DIR = "firmware"
+DEFAULT_MANIFEST_NAME = "firmware.json"
 
 
-def merge_bins(pairs, out_path, new_pairs, chip, env, version):
-    """
-    Merge ESP32 .bin segments into one file starting from the lowest offset.
-
-    pairs: list of (offset, path) tuples (e.g. (0x1000, "bootloader.bin"))
-    out_path: output file path
-    """
-
-    # Normalize and load
-    segs = []
-    for off, path in pairs:
-        off = int(off, 0) if isinstance(off, str) else off
-        with open(path, "rb") as f:
-            data = f.read()
-        segs.append((off, data, path))
-
-    # Find address bounds
-    min_off = min(o for o, _, _ in segs)
-    max_end = max(o + len(d) for o, d, _ in segs)
-    total_size = max_end - min_off
-
-    out_path = out_path.replace('.bin', f"_0x{min_off:X}.bin")
-
-    print(f"Merging {len(segs)} segments into {out_path}")
-    print(f"Start offset: 0x{min_off:X}, total size: {total_size} bytes")
-
-    buf = bytearray([0xFF]) * total_size
-
-    for off, data, path in segs:
-        rel_off = off - min_off
-        # print(f"  {path}: offset=0x{off:X}, rel=0x{rel_off:X}, size={len(data)}")
-        buf[rel_off:rel_off + len(data)] = data
-
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    with open(out_path, "wb") as f:
-        f.write(buf)
-
-    data = {}
-    data[env] = {}
-    data[env]["id"] = env
-    data[env]["file"] = f"{out_path.split(sep)[-1]}"
-    data[env]["address"] = f"0x{min_off:X}"
-    data[env]["size"] = total_size
-    data[env]["chip"] = chip
-    data[env]["version"] = version
-
-    existing_data = {}
-    if os.path.isfile(FIRMWARE_JSON_PATH):
-        with open(FIRMWARE_JSON_PATH, 'r', encoding='utf-8') as f:
-            existing_data = json.load(f)
-
-    existing_data.update(data)
-
-    with open(FIRMWARE_JSON_PATH, 'w', encoding='utf-8') as f:
-        json.dump(existing_data, f, ensure_ascii=False, indent=4)
-
-    print(f"✅ Wrote merged file: {out_path} ({len(buf)} bytes)")
-
-def read_version(content):
-    version = re.search(r'#define\s+FIRMWARE_VERSION\s+"([^"]+)"', content)
-    if not all([version]):
-        raise ValueError("Missing version fields in file")
-    return {
-        "version": version.group(1)
-    }
-    
-def version_utils(file_path):
-    content = file_path.read_text(encoding="utf-8")
-    version = read_version(content)
-    return version
+def project_option(name, default=None):
+    try:
+        return env.GetProjectOption(name, default)
+    except Exception:
+        return default
 
 
-def after_build(source, target, env):
-    env_name = str(source[0]).split(sep)[-2]
+def truthy(value):
+    return str(value).strip().lower() not in ("0", "false", "no", "off")
 
-    dest_dir = f"firmware"
-    os.makedirs(dest_dir, exist_ok=True)
 
-    skip_files = []
-    skip_files.append("firmware.json") # always skip firmware.json
-    
-    if os.path.isfile(FIRMWARE_JSON_PATH):
-        with open(FIRMWARE_JSON_PATH, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            for env_key, env_data in data.items():
-                if "file" in env_data:
-                    skip_files.append(env_data["file"])
+def firmware_output_dir():
+    configured = project_option("custom_firmware_output_dir", DEFAULT_OUTPUT_DIR)
+    output = Path(str(configured))
+    if not output.is_absolute():
+        output = PROJECT_DIR / output
+    return output
 
-    # Remove all files and subfolders inside dest_dir
-    for filename in os.listdir(dest_dir):
-        if filename in skip_files:
-            print(f"Skipping {filename} as it's in the skip list")
+
+def manifest_enabled():
+    return truthy(project_option("custom_firmware_manifest", "yes"))
+
+
+def detect_version():
+    configured = project_option("custom_firmware_version")
+    if configured:
+        return str(configured).strip()
+
+    candidates = [
+        PROJECT_DIR / "include" / "main.h",
+        PROJECT_DIR / "include" / "version.h",
+        PROJECT_DIR / "src" / "main.cpp",
+    ]
+
+    pattern = re.compile(r'#define\s+FIRMWARE_VERSION\s+"([^"]+)"')
+    for path in candidates:
+        if not path.is_file():
             continue
-        file_path = os.path.join(dest_dir, filename)
         try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.remove(file_path)  # remove file or symlink
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)  # remove directory
-        except Exception as e:
-            print(f"Failed to delete {file_path}: {e}")
+            match = pattern.search(path.read_text(encoding="utf-8"))
+        except UnicodeDecodeError:
+            continue
+        if match:
+            return match.group(1)
 
-    
-    info = version_utils(FILE_PATH)
-    version = f"{info['version']}"
+    return None
 
-    merged_path = f"{dest_dir}{sep}{env_name}_{version}.bin"
 
-    # Get full upload command (PlatformIO’s real flash command)
-    upload_cmd = env.subst("$UPLOADCMD") + f" {str(source[0])}"
-
-    # print(f"Upload cmd: {upload_cmd}")
-
-    # Parse the chip type
+def parse_upload_command():
+    app_bin = Path(env.subst("$BUILD_DIR")) / f"{env.subst('$PROGNAME')}.bin"
+    upload_cmd = f"{env.subst('$UPLOADCMD')} {app_bin}"
     chip_match = re.search(r"--chip\s+(\S+)", upload_cmd)
     chip = chip_match.group(1) if chip_match else "esp32"
 
-    # Parse offset + .bin pairs
-    pairs = re.findall(r"(0x[0-9a-fA-F]+)\s+(\S+\.bin)", upload_cmd)
+    pairs = [
+        (int(offset, 0), path)
+        for offset, path in re.findall(r"(0x[0-9a-fA-F]+)\s+(\S+\.bin)", upload_cmd)
+    ]
+
+    if app_bin.is_file():
+        app_offset = detect_app_offset()
+        pairs = [
+            (offset, path)
+            for offset, path in pairs
+            if Path(path).resolve() != app_bin.resolve()
+        ]
+        pairs.append((app_offset, str(app_bin)))
+
+    return chip, pairs, upload_cmd
+
+
+def detect_app_offset():
+    value = env.subst("$ESP32_APP_OFFSET")
+    if value and value.startswith("0x"):
+        return int(value, 0)
+
+    partition_csv = env.subst("$PARTITIONS_TABLE_CSV")
+    if partition_csv and Path(partition_csv).is_file():
+        for line in Path(partition_csv).read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            fields = [field.strip() for field in line.split(",")]
+            if len(fields) >= 4 and fields[0] == "app0" and fields[3].startswith("0x"):
+                return int(fields[3], 0)
+
+    return 0x10000
+
+
+def merge_bins(pairs, out_path):
     if not pairs:
-        print("❌ Could not detect any binary segments from upload command!")
-        print(upload_cmd)
+        raise ValueError("No .bin segments were found in PlatformIO upload command")
+
+    print(f"Merging {len(pairs)} firmware segments")
+
+    segments = []
+    for offset, path in pairs:
+        bin_path = Path(path)
+        if not bin_path.is_file():
+            raise ValueError(f"Binary segment not found: {bin_path}")
+        segments.append((offset, bin_path.read_bytes(), bin_path))
+
+    start_offset = min(offset for offset, _, _ in segments)
+    end_offset = max(offset + len(data) for offset, data, _ in segments)
+    image = bytearray([0xFF]) * (end_offset - start_offset)
+
+    for offset, data, _ in segments:
+        relative = offset - start_offset
+        image[relative:relative + len(data)] = data
+
+    out_path = out_path.with_name(f"{out_path.stem}_0x{start_offset:X}{out_path.suffix}")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(image)
+
+    return out_path, start_offset, len(image)
+
+
+def update_manifest(manifest_path, env_name, firmware_path, address, size, chip, version):
+    manifest = {}
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            print(f"Warning: Replacing invalid manifest JSON: {manifest_path}")
+
+    entry = {
+        "id": env_name,
+        "file": firmware_path.name,
+        "address": f"0x{address:X}",
+        "size": size,
+        "chip": chip,
+    }
+    if version:
+        entry["version"] = version
+
+    manifest[env_name] = entry
+    manifest_path.write_text(json.dumps(manifest, indent=4) + "\n", encoding="utf-8")
+
+
+def after_build(source, target, env):
+    if env.get("__BUILD_FIRMWARE_MERGED"):
+        return
+    env["__BUILD_FIRMWARE_MERGED"] = True
+
+    env_name = env.subst("$PIOENV")
+    version = detect_version()
+    output_dir = firmware_output_dir()
+
+    filename_parts = [env_name]
+    if version:
+        filename_parts.append(version)
+    merged_base = output_dir / ("_".join(filename_parts) + ".bin")
+
+    try:
+        chip, pairs, upload_cmd = parse_upload_command()
+        firmware_path, address, size = merge_bins(pairs, merged_base)
+    except ValueError as error:
+        print(f"Firmware merge skipped: {error}")
+        try:
+            print(upload_cmd)
+        except UnboundLocalError:
+            pass
         return
 
-    merge_bins(pairs, merged_path, pairs, chip, env_name, version) # use custom merge function
-    
+    if manifest_enabled():
+        update_manifest(
+            output_dir / DEFAULT_MANIFEST_NAME,
+            env_name,
+            firmware_path,
+            address,
+            size,
+            chip,
+            version,
+        )
 
-# Run after main program build
+    version_label = f" {version}" if version else ""
+    print(
+        f"Wrote merged firmware for {env_name}{version_label}: "
+        f"{firmware_path} ({size} bytes at 0x{address:X})"
+    )
+
+
 env.AddPostAction("upload", after_build)
 env.AddPostAction("buildprog", after_build)
+env.AddPostAction("$BUILD_DIR/${PROGNAME}.bin", after_build)
