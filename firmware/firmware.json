@@ -1,0 +1,18 @@
+{
+    "m5-stopwatch": {
+        "id": "m5-stopwatch",
+        "file": "m5-stopwatch_v1.0.2_0x0.bin",
+        "address": "0x0",
+        "size": 708576,
+        "chip": "esp32s3",
+        "version": "v1.0.2"
+    },
+    "viewe-s3-15": {
+        "id": "viewe-s3-15",
+        "file": "viewe-s3-15_v1.0.2_0x0.bin",
+        "address": "0x0",
+        "size": 704144,
+        "chip": "esp32s3",
+        "version": "v1.0.2"
+    }
+}
