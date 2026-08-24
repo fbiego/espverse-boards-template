@@ -161,6 +161,7 @@ void setup() {
 
   lvgl_port_init();
 
+  // Load the touch test screen
   lv_screen_load(touch_test_screen_init());
 
   board::after_ui_init();
