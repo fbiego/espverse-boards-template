@@ -4,9 +4,10 @@
 #include <Wire.h>
 
 #include "TouchDrvFT6X36.hpp"
+#include "displays/touch/touch_config.hpp"
 
-#ifndef FT6X36_I2C_ADDR
-#define FT6X36_I2C_ADDR 0x38
+#ifndef TOUCH_I2C_ADDR
+#define TOUCH_I2C_ADDR 0x38
 #endif
 
 class FT6X36Touch {
@@ -17,7 +18,7 @@ public:
 
   bool init(void) {
     touch.setPins(TOUCH_RST, TOUCH_IRQ);
-    touch.begin(Wire, FT6X36_I2C_ADDR, TOUCH_SDA, TOUCH_SCL);
+    touch.begin(Wire, TOUCH_I2C_ADDR, TOUCH_SDA, TOUCH_SCL);
     return true;
   }
 

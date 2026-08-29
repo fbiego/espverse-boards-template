@@ -13,7 +13,7 @@
 #define TOUCH_RST 2
 #define TOUCH_IRQ 4
 
-#define CST816_I2C_ADDR 0x2E
+#define TOUCH_I2C_ADDR 0x2E
 
 // display
 #define TFT_SPI_HOST SPI2_HOST
@@ -26,6 +26,9 @@
 #define TFT_RST 39
 
 #define TFT_BL 13
+
+#define TFT_IPS false
+#define TFT_ROTATION 4
 
 #define BUZZER_PIN 38
 
@@ -51,13 +54,13 @@
  *********************/
 #include "displays/display_wrapper.hpp"
 #include "displays/panels/st7789_spi.hpp"
-#include "displays/touch/cst816.hpp"
+#include "displays/touch/chsc6540.hpp"
 
 /*********************
  *      TYPEDEFS
  *********************/
 using BoardDisplay =
-    display::DisplayWrapper<ST7789SpiPanel, CST816Touch>;
+    display::DisplayWrapper<ST7789SpiPanel, CHSC6540Touch>;
 extern BoardDisplay tft;
 
 #include "boards/common.hpp"

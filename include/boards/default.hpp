@@ -11,10 +11,10 @@
 #define RGB_ORDER false
 
 // touch
-#define I2C_SDA 21
-#define I2C_SCL 22
-#define TP_INT 14
-#define TP_RST 5
+#define TOUCH_SDA 21
+#define TOUCH_SCL 22
+#define TOUCH_IRQ 14
+#define TOUCH_RST 5
 
 // display
 #define TFT_SPI_HOST VSPI_HOST

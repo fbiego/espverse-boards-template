@@ -4,9 +4,10 @@
 #include <Wire.h>
 
 #include "TouchDrvCSTXXX.hpp"
+#include "displays/touch/touch_config.hpp"
 
-#ifndef CST816_I2C_ADDR
-#define CST816_I2C_ADDR 0x15
+#ifndef TOUCH_I2C_ADDR
+#define TOUCH_I2C_ADDR 0x15
 #endif
 
 #ifndef TOUCH_ROTATION_OFFSET
@@ -42,7 +43,7 @@ public:
 
   bool init(void) {
     touch.setPins(TOUCH_RST, TOUCH_IRQ);
-    touch.begin(Wire, CST816_I2C_ADDR, TOUCH_SDA, TOUCH_SCL);
+    touch.begin(Wire, TOUCH_I2C_ADDR, TOUCH_SDA, TOUCH_SCL);
     configureInterruptMode();
     return true;
   }
@@ -104,7 +105,7 @@ public:
 
 private:
   void writeRegister(uint8_t reg, uint8_t value) {
-    Wire.beginTransmission(CST816_I2C_ADDR);
+    Wire.beginTransmission(TOUCH_I2C_ADDR);
     Wire.write(reg);
     Wire.write(value);
     Wire.endTransmission();
@@ -113,9 +114,9 @@ private:
   void configureInterruptMode() {
 #if TOUCH_IRQ >= 0
     pinMode(TOUCH_IRQ, INPUT_PULLUP);
-#endif
     writeRegister(0xFA, 0x20);
     writeRegister(0xED, 20);
+#endif
   }
 
   bool readRawPoint(int16_t *x, int16_t *y) {
@@ -155,13 +156,13 @@ private:
   }
 
   bool readRegister(uint8_t reg, uint8_t *data, size_t length) {
-    Wire.beginTransmission(CST816_I2C_ADDR);
+    Wire.beginTransmission(TOUCH_I2C_ADDR);
     Wire.write(reg);
     if (Wire.endTransmission(false) != 0) {
       return false;
     }
 
-    size_t read = Wire.requestFrom((uint8_t)CST816_I2C_ADDR, (uint8_t)length);
+    size_t read = Wire.requestFrom((uint8_t)TOUCH_I2C_ADDR, (uint8_t)length);
     if (read != length) {
       return false;
     }

@@ -11,10 +11,10 @@
 #define RGB_ORDER false
 
 // touch
-#define I2C_SDA 4
-#define I2C_SCL 5
-#define TP_INT 0
-#define TP_RST -1
+#define TOUCH_SDA 4
+#define TOUCH_SCL 5
+#define TOUCH_IRQ 0
+#define TOUCH_RST -1
 
 // display
 #define TFT_SPI_HOST SPI2_HOST
@@ -120,7 +120,7 @@ inline void set_pin_io(uint8_t pin_number, bool value)
 
 inline void elecrow_c3_init()
 {
-    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.begin(TOUCH_SDA, TOUCH_SCL);
     init_io_extender();
     delay(100);
     set_pin_io(0, false);

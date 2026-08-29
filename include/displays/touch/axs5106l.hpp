@@ -3,7 +3,12 @@
 #include "Wire.h"
 #include <Arduino.h>
 
-#define AXS5106L_ADDR 0x63
+#include "displays/touch/touch_config.hpp"
+
+#ifndef TOUCH_I2C_ADDR
+#define TOUCH_I2C_ADDR 0x63
+#endif
+
 #define AXS5106L_ID_REG 0x08
 
 #define AXS5106L_TOUCH_DATA_REG 0X01
@@ -12,14 +17,16 @@ class AXS5106LTouch {
 public:
   template <typename Panel> void attach(Panel &panel) {}
   bool init(void) {
-    pinMode(TP_RST, OUTPUT);
+#if TOUCH_RST >= 0
+    pinMode(TOUCH_RST, OUTPUT);
 
-    digitalWrite(TP_RST, LOW);
+    digitalWrite(TOUCH_RST, LOW);
     delay(200);
-    digitalWrite(TP_RST, HIGH);
+    digitalWrite(TOUCH_RST, HIGH);
     delay(300);
+#endif
 
-    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.begin(TOUCH_SDA, TOUCH_SCL);
 
     return true;
   }
@@ -29,7 +36,7 @@ public:
 
   template <typename Panel> bool read(Panel &panel, uint16_t *x, uint16_t *y) {
     uint8_t data[14] = {0};
-    touch_i2c_read(AXS5106L_ADDR, AXS5106L_TOUCH_DATA_REG, data, 14);
+    touch_i2c_read(TOUCH_I2C_ADDR, AXS5106L_TOUCH_DATA_REG, data, 14);
     bool touched = data[1] > 0;
     if (touched) {
       uint16_t tx = ((uint16_t)(data[2] & 0x0F) << 8) | data[3];

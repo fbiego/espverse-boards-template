@@ -51,11 +51,6 @@
 #define GC9309_RDID2 0xDB // Read ID2
 #define GC9309_RDID3 0xDC // Read ID3
 
-#define AXS5106L_ADDR 0x63
-#define AXS5106L_ID_REG 0x08
-
-#define AXS5106L_TOUCH_DATA_REG 0X01
-
 static const uint8_t GC9309_init_operations[] = {
     BEGIN_WRITE,
     WRITE_COMMAND_8, 0xFE,

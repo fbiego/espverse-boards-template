@@ -4,9 +4,10 @@
 #include <Wire.h>
 
 #include "TouchDrvCSTXXX.hpp"
+#include "displays/touch/touch_config.hpp"
 
-#ifndef CSTXXX_I2C_ADDR
-#define CSTXXX_I2C_ADDR 0x15
+#ifndef TOUCH_I2C_ADDR
+#define TOUCH_I2C_ADDR 0x15
 #endif
 
 class CSTXXXTouch {
@@ -17,7 +18,7 @@ public:
 
   bool init(void) {
     touch.setPins(TOUCH_RST, TOUCH_IRQ);
-    touch.begin(Wire, CSTXXX_I2C_ADDR, TOUCH_SDA, TOUCH_SCL);
+    touch.begin(Wire, TOUCH_I2C_ADDR, TOUCH_SDA, TOUCH_SCL);
 #ifdef CSTXXX_MAX_X
     touch.setMaxCoordinates(CSTXXX_MAX_X, CSTXXX_MAX_Y);
 #endif

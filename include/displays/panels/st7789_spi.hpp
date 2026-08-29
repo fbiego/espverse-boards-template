@@ -7,6 +7,14 @@
 
 #include "displays/panels/lovyan_light_config.hpp"
 
+#ifndef TFT_IPS
+#define TFT_IPS false
+#endif
+
+#ifndef TFT_ROTATION
+#define TFT_ROTATION 0
+#endif
+
 class ST7789SpiPanel {
 public:
   Arduino_DataBus *bus;
@@ -15,7 +23,7 @@ public:
 
   ST7789SpiPanel() {
     bus = new Arduino_ESP32SPIDMA(TFT_DC, TFT_CS, TFT_SCLK, TFT_MOSI, TFT_MISO, TFT_SPI_HOST);
-    gfx = new Arduino_ST7789(bus, TFT_RST, 0, false, SCREEN_WIDTH,
+    gfx = new Arduino_ST7789(bus, TFT_RST, TFT_ROTATION, TFT_IPS, SCREEN_WIDTH,
                               SCREEN_HEIGHT);
 
     auto cfg = light.config();

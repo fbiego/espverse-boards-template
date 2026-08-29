@@ -11,13 +11,13 @@
 #define RGB_ORDER false
 
 // touch
-#define TP_SPI_HOST VSPI_HOST
-#define TP_SCLK 25
-#define TP_MOSI 32
-#define TP_MISO 39
-#define TP_CS 33
-#define TP_INT 36
-#define TP_RST -1
+#define TOUCH_SPI_HOST VSPI_HOST
+#define TOUCH_SCLK 25
+#define TOUCH_MOSI 32
+#define TOUCH_MISO 39
+#define TOUCH_CS 33
+#define TOUCH_IRQ 36
+#define TOUCH_RST -1
 
 
 // display

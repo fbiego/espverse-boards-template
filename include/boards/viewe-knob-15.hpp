@@ -33,7 +33,7 @@
 #define BOARD_SW_ROTATION 1
 #define BOARD_USE_ROUNDER_CB 1
 #define CO5300_COL_OFFSET 6
-#define CSTXXX_I2C_ADDR 0x15
+#define TOUCH_I2C_ADDR 0x15
 
 
 #ifndef BOARD_OEM

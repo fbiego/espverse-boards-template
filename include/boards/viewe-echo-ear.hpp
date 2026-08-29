@@ -248,7 +248,7 @@ static const uint8_t st77916_init[] = {
     WRITE_COMMAND_8, 0x2c,
     END_WRITE};
 
-#define CST816_I2C_ADDR 0x15
+#define TOUCH_I2C_ADDR 0x15
 
 
 #ifndef BOARD_OEM

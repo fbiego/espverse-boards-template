@@ -36,7 +36,7 @@
 #define BOARD_SW_ROTATION 1
 #define BOARD_USE_ROUNDER_CB 1
 #define CO5300_COL_OFFSET 22
-#define FT6X36_I2C_ADDR 0x38
+#define TOUCH_I2C_ADDR 0x38
 
 /*********************
  *      INCLUDES
