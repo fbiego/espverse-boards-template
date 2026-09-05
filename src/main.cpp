@@ -50,6 +50,8 @@ static void set_screen_brightness_level(uint8_t value) {
 #endif
 }
 
+void espverse_home_screen_create(void);
+
 lv_obj_t *label;
 lv_obj_t *dot;
 lv_obj_t *button;
@@ -156,13 +158,15 @@ void setup() {
   board::after_display_init();
 
 #if BOARD_ROTATION_LOCKED == 1 && BOARD_ROTATION_VALUE >= 0
-  rotation = BOARD_ROTATION_VALUE;
+  tft.setRotation(BOARD_ROTATION_VALUE);
 #endif
 
   lvgl_port_init();
 
   // Load the touch test screen
   lv_screen_load(touch_test_screen_init());
+
+  espverse_home_screen_create();
 
   board::after_ui_init();
 
@@ -173,4 +177,138 @@ void loop() {
   lv_timer_handler(); // Update the UI-
   delay(5);
   board::loop();
+}
+
+
+#ifndef ESPVERSE_BOARD_ID
+#define ESPVERSE_BOARD_ID "esp32s3-board"
+#endif
+
+#ifndef ESPVERSE_MANUFACTURER
+#define ESPVERSE_MANUFACTURER "ESPVerse"
+#endif
+
+#ifndef ESPVERSE_BOARD_NAME
+#define ESPVERSE_BOARD_NAME "Board Template"
+#endif
+
+#ifndef ESPVERSE_DISPLAY_RES
+#define ESPVERSE_DISPLAY_RES "320 x 240"
+#endif
+
+#ifndef ESPVERSE_FW_VERSION
+#define ESPVERSE_FW_VERSION "0.1.0"
+#endif
+
+static void touch_test_cb(lv_event_t * e) {
+    LV_UNUSED(e);
+    /* open touch test screen */
+}
+
+static void rotation_test_cb(lv_event_t * e) {
+    LV_UNUSED(e);
+    /* cycle display rotation */
+}
+
+static void calibrate_cb(lv_event_t * e) {
+    LV_UNUSED(e);
+    /* open calibration flow */
+}
+
+static lv_obj_t * make_value_row(lv_obj_t * parent, const char * label, const char * value) {
+    lv_obj_t * row = lv_obj_create(parent);
+    lv_obj_remove_style_all(row);
+    lv_obj_set_width(row, LV_PCT(100));
+    lv_obj_set_height(row, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t * label_obj = lv_label_create(row);
+    lv_label_set_text(label_obj, label);
+    lv_obj_set_style_text_color(label_obj, lv_color_hex(0xa8b7c8), 0);
+
+    lv_obj_t * value_obj = lv_label_create(row);
+    lv_label_set_text(value_obj, value);
+    lv_obj_set_style_text_color(value_obj, lv_color_hex(0xedf6ff), 0);
+    lv_obj_set_style_text_align(value_obj, LV_TEXT_ALIGN_RIGHT, 0);
+
+    return row;
+}
+
+static lv_obj_t * make_button(lv_obj_t * parent, const char * text, lv_event_cb_t cb) {
+    lv_obj_t * btn = lv_button_create(parent);
+    lv_obj_set_height(btn, 40);
+    lv_obj_set_flex_grow(btn, 1);
+    lv_obj_set_style_radius(btn, 8, 0);
+    lv_obj_set_style_bg_color(btn, lv_color_hex(0x101721), 0);
+    lv_obj_set_style_border_width(btn, 1, 0);
+    lv_obj_set_style_border_color(btn, lv_color_hex(0x314253), 0);
+    lv_obj_add_event_cb(btn, cb, LV_EVENT_CLICKED, NULL);
+
+    lv_obj_t * label = lv_label_create(btn);
+    lv_label_set_text(label, text);
+    lv_obj_set_style_text_color(label, lv_color_hex(0xedf6ff), 0);
+    lv_obj_center(label);
+
+    return btn;
+}
+
+void espverse_home_screen_create(void) {
+    lv_obj_t * screen = lv_obj_create(NULL);
+    lv_obj_set_style_bg_color(screen, lv_color_hex(0x07090d), 0);
+    lv_obj_set_style_pad_all(screen, 10, 0);
+
+    lv_obj_t * root = lv_obj_create(screen);
+    lv_obj_remove_style_all(root);
+    lv_obj_set_size(root, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_flex_flow(root, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(root, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(root, 8, 0);
+
+    lv_obj_t * header = lv_obj_create(root);
+    lv_obj_remove_style_all(header);
+    lv_obj_set_width(header, LV_PCT(100));
+    lv_obj_set_height(header, 34);
+    lv_obj_set_flex_flow(header, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(header, LV_FLEX_ALIGN_SPACE_BETWEEN, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+    lv_obj_t * title = lv_label_create(header);
+    lv_label_set_text(title, "ESPVerse");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xedf6ff), 0);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_20, 0);
+
+    lv_obj_t * status = lv_label_create(header);
+    lv_label_set_text(status, "READY");
+    lv_obj_set_style_text_color(status, lv_color_hex(0x6ee7a8), 0);
+
+    lv_obj_t * panel = lv_obj_create(root);
+    lv_obj_set_width(panel, LV_PCT(100));
+    lv_obj_set_flex_grow(panel, 1);
+    lv_obj_set_style_bg_color(panel, lv_color_hex(0x101721), 0);
+    lv_obj_set_style_radius(panel, 8, 0);
+    lv_obj_set_style_border_width(panel, 1, 0);
+    lv_obj_set_style_border_color(panel, lv_color_hex(0x243140), 0);
+    lv_obj_set_style_pad_all(panel, 10, 0);
+    lv_obj_set_style_pad_row(panel, 6, 0);
+    lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+
+    make_value_row(panel, "Board ID", ESPVERSE_BOARD_ID);
+    make_value_row(panel, "Manufacturer", ESPVERSE_MANUFACTURER);
+    make_value_row(panel, "Board", ESPVERSE_BOARD_NAME);
+    make_value_row(panel, "Display", ESPVERSE_DISPLAY_RES);
+    make_value_row(panel, "LVGL", LVGL_VERSION_INFO);
+    make_value_row(panel, "Firmware", ESPVERSE_FW_VERSION);
+
+    lv_obj_t * actions = lv_obj_create(root);
+    lv_obj_remove_style_all(actions);
+    lv_obj_set_width(actions, LV_PCT(100));
+    lv_obj_set_height(actions, 44);
+    lv_obj_set_flex_flow(actions, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(actions, 6, 0);
+
+    make_button(actions, "Touch", touch_test_cb);
+    make_button(actions, "Rotate", rotation_test_cb);
+    make_button(actions, "Cal", calibrate_cb);
+
+    lv_screen_load(screen);
 }
